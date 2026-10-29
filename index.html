@@ -153,7 +153,7 @@
     margin:6px auto 26px;padding:10px 10px 0;background:#fff;max-width:300px;
     box-shadow:0 8px 24px rgba(90,60,40,.18);border-radius:3px;
   }
-  .polaroid img{display:block;width:100%;height:auto;border-radius:2px}
+  .polaroid img,.polaroid video{display:block;width:100%;height:auto;border-radius:2px;background:#eee}
   .polaroid figcaption{padding:8px 0 12px;font-size:16px;color:var(--soft)}
   .tilt-l{-webkit-transform:rotate(-2deg);transform:rotate(-2deg)}
   .tilt-r{-webkit-transform:rotate(2deg);transform:rotate(2deg)}
@@ -334,7 +334,7 @@
   <span class="tip">點一下,放我們的歌</span><span class="note">♪</span>
 </button>
 
-<script src="secret.js?v=50639d84"></script>
+<script src="secret.js?v=91cf2e25"></script>
 <script>
 (function(){
   'use strict';
@@ -471,10 +471,28 @@
   var COLORS = ['var(--r1)','var(--r2)','var(--r3)','var(--r4)','var(--r5)','var(--r6)'];
   var NOTE_BG = ['#fde3dc','#fdebd6','#fbf1cf','#e3f0dd','#dfe9f6','#ebe2f4'];
   var NOTE_ROT = [-2, 1.5, -1, 2, -1.5, 1];
-  var songId = '', songStart = 0;
+  var songId = '', songStart = 0, videos = [];
+
+  function dataUriToBlobUrl(uri){
+    var comma = uri.indexOf(','), mime = uri.slice(5, uri.indexOf(';')), bin = atob(uri.slice(comma + 1));
+    var a = new Uint8Array(bin.length);
+    for(var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    return URL.createObjectURL(new Blob([a], {type: mime}));
+  }
+  function wireVideos(){
+    [].forEach.call(document.querySelectorAll('video[data-video]'), function(v){
+      v.muted = true;
+      v.src = dataUriToBlobUrl(videos[+v.getAttribute('data-video')]);
+      var p = v.play(); if(p && p.catch) p.catch(function(){});
+    });
+  }
 
   function polaroid(p, cls){
-    return '<figure class="polaroid ' + (cls || '') + '"><img src="' + p.src + '" alt="">' +
+    // 影片先放空的 <video>,畫完後再轉成 blob 網址塞進去(iPhone 對 data: 影片支援不穩)
+    var inner = p.video
+      ? '<video muted playsinline loop autoplay preload="auto" data-video="' + (videos.push(p.video) - 1) + '"></video>'
+      : '<img src="' + p.src + '" alt="">';
+    return '<figure class="polaroid ' + (cls || '') + '">' + inner +
       (p.caption ? '<figcaption>' + esc(p.caption) + '</figcaption>' : '') + '</figure>';
   }
   function photosHTML(list, i){
@@ -600,6 +618,7 @@
 
     var root = $('letter');
     root.innerHTML = h.join('');
+    wireVideos();
     root.hidden = false;
     window.scrollTo(0, 0);
     if(audio){
